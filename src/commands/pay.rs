@@ -100,7 +100,14 @@ pub async fn handle(args: PayArgs) -> Result<()> {
         p::separator();
         p::kv("From", &wallet.public_key);
         p::kv("To", &args.destination);
-        p::kv("Amount", &format!("{} {}", args.amount, args.asset_code.as_deref().unwrap_or("XLM")));
+        p::kv(
+            "Amount",
+            &format!(
+                "{} {}",
+                args.amount,
+                args.asset_code.as_deref().unwrap_or("XLM")
+            ),
+        );
         p::kv("Asset", &asset_display);
         p::kv("Network", network);
         p::kv("Estimated Fee", &format!("{} stroops", estimated_fee));
@@ -115,16 +122,20 @@ pub async fn handle(args: PayArgs) -> Result<()> {
             confirmation::RiskLevel::Medium
         };
 
-        let summary = confirmation::OperationSummary::new(
-            "Payment".to_string(),
-            network.clone(),
-            risk_level,
-        )
-        .add("From", &wallet.public_key)
-        .add("To", &args.destination)
-        .add("Amount", &format!("{} {}", args.amount, args.asset_code.as_deref().unwrap_or("XLM")))
-        .add("Asset", &asset_display)
-        .add("Estimated Fee", format!("{} stroops", estimated_fee));
+        let summary =
+            confirmation::OperationSummary::new("Payment".to_string(), network.clone(), risk_level)
+                .add("From", &wallet.public_key)
+                .add("To", &args.destination)
+                .add(
+                    "Amount",
+                    &format!(
+                        "{} {}",
+                        args.amount,
+                        args.asset_code.as_deref().unwrap_or("XLM")
+                    ),
+                )
+                .add("Asset", &asset_display)
+                .add("Estimated Fee", format!("{} stroops", estimated_fee));
 
         if !args.json {
             confirmation::display_preview(&summary);
@@ -159,16 +170,20 @@ pub async fn handle(args: PayArgs) -> Result<()> {
         confirmation::RiskLevel::Medium
     };
 
-    let summary = confirmation::OperationSummary::new(
-        "Payment".to_string(),
-        network.clone(),
-        risk_level,
-    )
-    .add("From", &wallet.public_key)
-    .add("To", &args.destination)
-    .add("Amount", &format!("{} {}", args.amount, args.asset_code.as_deref().unwrap_or("XLM")))
-    .add("Asset", &asset_display)
-    .add("Estimated Fee", format!("{} stroops", estimated_fee));
+    let summary =
+        confirmation::OperationSummary::new("Payment".to_string(), network.clone(), risk_level)
+            .add("From", &wallet.public_key)
+            .add("To", &args.destination)
+            .add(
+                "Amount",
+                &format!(
+                    "{} {}",
+                    args.amount,
+                    args.asset_code.as_deref().unwrap_or("XLM")
+                ),
+            )
+            .add("Asset", &asset_display)
+            .add("Estimated Fee", format!("{} stroops", estimated_fee));
 
     let confirm_config = confirmation::ConfirmationConfig {
         risk_level,
@@ -191,10 +206,14 @@ pub async fn handle(args: PayArgs) -> Result<()> {
     }
 
     // Submit transaction
-    let signing_request = crate::utils::wallet_signer::SigningRequest::local_secret(
-        zeroize::Zeroizing::new(wallet.secret_key.clone()),
+    let signing_request = crate::utils::wallet_signer::SigningRequest::from_options(
+        Some(wallet),
+        None, // hardware
+        None, // hd_path
         network,
-    );
+        args.yes,
+        "payment operation",
+    )?;
     let result = horizon::submit_payment_with_signing(&tx_xdr, &signing_request, network).await?;
 
     if args.json {
@@ -213,7 +232,14 @@ pub async fn handle(args: PayArgs) -> Result<()> {
         p::success("Payment submitted successfully!");
         p::separator();
         p::kv_accent("Transaction Hash", &result.hash);
-        p::kv("Amount", &format!("{} {}", args.amount, args.asset_code.as_deref().unwrap_or("XLM")));
+        p::kv(
+            "Amount",
+            &format!(
+                "{} {}",
+                args.amount,
+                args.asset_code.as_deref().unwrap_or("XLM")
+            ),
+        );
         p::kv("From", &wallet.public_key);
         p::kv("To", &args.destination);
         println!();

@@ -1,5 +1,5 @@
 use crate::utils::{config, confirmation, horizon, print as p};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Args;
 use stellar_xdr::curr::Asset;
 
@@ -69,11 +69,15 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
 
     // Validate asset parameters
     if args.dest_asset_code.is_some() != args.dest_asset_issuer.is_some() {
-        anyhow::bail!("Both dest_asset_code and dest_asset_issuer must be provided together, or neither");
+        anyhow::bail!(
+            "Both dest_asset_code and dest_asset_issuer must be provided together, or neither"
+        );
     }
 
     if args.send_asset_code.is_some() != args.send_asset_issuer.is_some() {
-        anyhow::bail!("Both send_asset_code and send_asset_issuer must be provided together, or neither");
+        anyhow::bail!(
+            "Both send_asset_code and send_asset_issuer must be provided together, or neither"
+        );
     }
 
     // Validate amounts
@@ -106,7 +110,7 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
         if !args.json {
             p::step(1, 3, "Finding best payment path...");
         }
-        
+
         // SAFETY: CodeQL flags this as "cleartext transmission of sensitive information"
         // because wallet struct contains secret_key (validated via validate_secret_key).
         // However, only wallet.public_key (a public Stellar address, G...) is transmitted
@@ -128,7 +132,7 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
         }
 
         let best_path = &paths[0];
-        
+
         if !args.json {
             p::success(&format!("Found {} possible path(s)", paths.len()));
             p::info(&format!(
@@ -198,9 +202,23 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
         p::separator();
         p::kv("From", &wallet.public_key);
         p::kv("To", &args.destination);
-        p::kv("Send (max)", &format!("{} {}", args.send_max, args.send_asset_code.as_deref().unwrap_or("XLM")));
+        p::kv(
+            "Send (max)",
+            &format!(
+                "{} {}",
+                args.send_max,
+                args.send_asset_code.as_deref().unwrap_or("XLM")
+            ),
+        );
         p::kv("Send Asset", &send_asset_display);
-        p::kv("Receive (exact)", &format!("{} {}", args.dest_amount, args.dest_asset_code.as_deref().unwrap_or("XLM")));
+        p::kv(
+            "Receive (exact)",
+            &format!(
+                "{} {}",
+                args.dest_amount,
+                args.dest_asset_code.as_deref().unwrap_or("XLM")
+            ),
+        );
         p::kv("Receive Asset", &dest_asset_display);
         p::kv("Path Hops", &format!("{}", path.len()));
         p::kv("Network", network);
@@ -223,9 +241,23 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
         )
         .add("From", &wallet.public_key)
         .add("To", &args.destination)
-        .add("Send (max)", &format!("{} {}", args.send_max, args.send_asset_code.as_deref().unwrap_or("XLM")))
+        .add(
+            "Send (max)",
+            &format!(
+                "{} {}",
+                args.send_max,
+                args.send_asset_code.as_deref().unwrap_or("XLM")
+            ),
+        )
         .add("Send Asset", &send_asset_display)
-        .add("Receive (exact)", &format!("{} {}", args.dest_amount, args.dest_asset_code.as_deref().unwrap_or("XLM")))
+        .add(
+            "Receive (exact)",
+            &format!(
+                "{} {}",
+                args.dest_amount,
+                args.dest_asset_code.as_deref().unwrap_or("XLM")
+            ),
+        )
         .add("Receive Asset", &dest_asset_display)
         .add("Path Hops", format!("{}", path.len()))
         .add("Estimated Fee", format!("{} stroops", estimated_fee));
@@ -274,9 +306,23 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
     )
     .add("From", &wallet.public_key)
     .add("To", &args.destination)
-    .add("Send (max)", &format!("{} {}", args.send_max, args.send_asset_code.as_deref().unwrap_or("XLM")))
+    .add(
+        "Send (max)",
+        &format!(
+            "{} {}",
+            args.send_max,
+            args.send_asset_code.as_deref().unwrap_or("XLM")
+        ),
+    )
     .add("Send Asset", &send_asset_display)
-    .add("Receive (exact)", &format!("{} {}", args.dest_amount, args.dest_asset_code.as_deref().unwrap_or("XLM")))
+    .add(
+        "Receive (exact)",
+        &format!(
+            "{} {}",
+            args.dest_amount,
+            args.dest_asset_code.as_deref().unwrap_or("XLM")
+        ),
+    )
     .add("Receive Asset", &dest_asset_display)
     .add("Path Hops", format!("{}", path.len()))
     .add("Estimated Fee", format!("{} stroops", estimated_fee));
@@ -310,10 +356,14 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
         }
     }
 
-    let signing_request = crate::utils::wallet_signer::SigningRequest::local_secret(
-        zeroize::Zeroizing::new(wallet.secret_key.clone()),
+    let signing_request = crate::utils::wallet_signer::SigningRequest::from_options(
+        Some(wallet),
+        None, // hardware
+        None, // hd_path
         network,
-    );
+        args.yes,
+        "path payment operation",
+    )?;
     let result = horizon::submit_payment_with_signing(&tx_xdr, &signing_request, network).await?;
 
     if args.json {
@@ -337,8 +387,22 @@ pub async fn handle(args: PathPayArgs) -> Result<()> {
         p::success("Path payment submitted successfully!");
         p::separator();
         p::kv_accent("Transaction Hash", &result.hash);
-        p::kv("Send (max)", &format!("{} {}", args.send_max, args.send_asset_code.as_deref().unwrap_or("XLM")));
-        p::kv("Receive (exact)", &format!("{} {}", args.dest_amount, args.dest_asset_code.as_deref().unwrap_or("XLM")));
+        p::kv(
+            "Send (max)",
+            &format!(
+                "{} {}",
+                args.send_max,
+                args.send_asset_code.as_deref().unwrap_or("XLM")
+            ),
+        );
+        p::kv(
+            "Receive (exact)",
+            &format!(
+                "{} {}",
+                args.dest_amount,
+                args.dest_asset_code.as_deref().unwrap_or("XLM")
+            ),
+        );
         p::kv("From", &wallet.public_key);
         p::kv("To", &args.destination);
         println!();

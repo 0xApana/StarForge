@@ -3,14 +3,14 @@ use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::Deserialize;
+use std::time::Duration;
 use stellar_strkey::ed25519;
 use stellar_xdr::curr::{
     AccountId, AlphaNum12, AlphaNum4, Asset, AssetCode12, AssetCode4, ChangeTrustAsset,
-    ChangeTrustOp, Int64, Limits, MuxedAccount, Operation, OperationBody, PathPaymentStrictReceiveOp,
-    PaymentOp, Preconditions, PublicKey, SequenceNumber, TimePoint, TimeBounds, Transaction,
+    ChangeTrustOp, Limits, MuxedAccount, Operation, OperationBody, PathPaymentStrictReceiveOp,
+    PaymentOp, Preconditions, PublicKey, SequenceNumber, TimeBounds, TimePoint, Transaction,
     TransactionEnvelope, TransactionExt, TransactionV1Envelope, Uint256, VecM, WriteXdr,
 };
-use std::time::Duration;
 
 fn build_http_client(timeout: Duration) -> Result<Client> {
     Client::builder()
@@ -705,7 +705,6 @@ pub fn build_change_trust_transaction(
         Asset::Native => anyhow::bail!("Cannot create trustline for native XLM"),
         Asset::CreditAlphanum4(a) => ChangeTrustAsset::CreditAlphanum4(a),
         Asset::CreditAlphanum12(a) => ChangeTrustAsset::CreditAlphanum12(a),
-        Asset::PoolShare(_) => anyhow::bail!("Pool share assets not supported yet"),
     };
 
     let limit_amount = if let Some(lim) = limit {
@@ -716,7 +715,7 @@ pub fn build_change_trust_transaction(
 
     let change_trust_op = ChangeTrustOp {
         line: trust_asset,
-        limit: Int64(limit_amount),
+        limit: limit_amount,
     };
 
     let operation = Operation {
@@ -761,7 +760,7 @@ pub fn build_payment_transaction(
     let payment_op = PaymentOp {
         destination: MuxedAccount::Ed25519(Uint256(dest_pk.0)),
         asset,
-        amount: Int64(amount_stroops),
+        amount: amount_stroops,
     };
 
     let operation = Operation {
@@ -813,10 +812,10 @@ pub fn build_path_payment_transaction(
 
     let path_payment_op = PathPaymentStrictReceiveOp {
         send_asset,
-        send_max: Int64(send_max_stroops),
+        send_max: send_max_stroops,
         destination: MuxedAccount::Ed25519(Uint256(dest_pk.0)),
         dest_asset,
-        dest_amount: Int64(dest_amount_stroops),
+        dest_amount: dest_amount_stroops,
         path: path_vec,
     };
 
@@ -973,7 +972,7 @@ pub async fn find_payment_paths(
     network: &str,
 ) -> Result<Vec<PathRecord>> {
     let horizon = horizon_url(network)?;
-    
+
     let dest_asset = match (destination_asset_code, destination_asset_issuer) {
         (None, None) => "native".to_string(),
         (Some(code), Some(issuer)) => format!("{}:{}", code, issuer),
@@ -989,8 +988,12 @@ pub async fn find_payment_paths(
         destination_amount
     );
 
-    let url = if let (Some(code), Some(issuer)) = (destination_asset_code, destination_asset_issuer) {
-        format!("{}&destination_asset_code={}&destination_asset_issuer={}", url, code, issuer)
+    let url = if let (Some(code), Some(issuer)) = (destination_asset_code, destination_asset_issuer)
+    {
+        format!(
+            "{}&destination_asset_code={}&destination_asset_issuer={}",
+            url, code, issuer
+        )
     } else {
         url
     };

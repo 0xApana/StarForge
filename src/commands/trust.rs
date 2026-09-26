@@ -77,7 +77,10 @@ pub async fn handle(args: TrustArgs) -> Result<()> {
     if !args.json {
         p::header("Establishing Trustline");
         p::separator();
-        p::kv("Asset", &format!("{}:{}", args.asset_code, args.asset_issuer));
+        p::kv(
+            "Asset",
+            &format!("{}:{}", args.asset_code, args.asset_issuer),
+        );
         if let Some(ref limit) = args.limit {
             p::kv("Trust Limit", limit);
         } else {
@@ -105,10 +108,7 @@ pub async fn handle(args: TrustArgs) -> Result<()> {
         )
         .add("Asset Code", &args.asset_code)
         .add("Asset Issuer", &args.asset_issuer)
-        .add(
-            "Trust Limit",
-            args.limit.as_deref().unwrap_or("Maximum"),
-        )
+        .add("Trust Limit", args.limit.as_deref().unwrap_or("Maximum"))
         .add("Wallet", &args.wallet)
         .add("Account", &wallet.public_key)
         .add("Estimated Fee", format!("{} stroops", estimated_fee));
@@ -152,10 +152,7 @@ pub async fn handle(args: TrustArgs) -> Result<()> {
     )
     .add("Asset Code", &args.asset_code)
     .add("Asset Issuer", &args.asset_issuer)
-    .add(
-        "Trust Limit",
-        args.limit.as_deref().unwrap_or("Maximum"),
-    )
+    .add("Trust Limit", args.limit.as_deref().unwrap_or("Maximum"))
     .add("Wallet", &args.wallet)
     .add("Account", &wallet.public_key)
     .add("Estimated Fee", format!("{} stroops", estimated_fee));
@@ -181,10 +178,14 @@ pub async fn handle(args: TrustArgs) -> Result<()> {
     }
 
     // Submit transaction
-    let signing_request = crate::utils::wallet_signer::SigningRequest::local_secret(
-        zeroize::Zeroizing::new(wallet.secret_key.clone()),
+    let signing_request = crate::utils::wallet_signer::SigningRequest::from_options(
+        Some(wallet),
+        None, // hardware
+        None, // hd_path
         network,
-    );
+        args.yes,
+        "trustline operation",
+    )?;
     let result = horizon::submit_payment_with_signing(&tx_xdr, &signing_request, network).await?;
 
     if args.json {
@@ -202,7 +203,10 @@ pub async fn handle(args: TrustArgs) -> Result<()> {
         p::success("Trustline established successfully!");
         p::separator();
         p::kv_accent("Transaction Hash", &result.hash);
-        p::kv("Asset", &format!("{}:{}", args.asset_code, args.asset_issuer));
+        p::kv(
+            "Asset",
+            &format!("{}:{}", args.asset_code, args.asset_issuer),
+        );
         p::kv("Account", &wallet.public_key);
         println!();
         p::info(&format!(

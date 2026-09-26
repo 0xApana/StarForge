@@ -27,7 +27,7 @@ fn test_build_change_trust_transaction() -> Result<()> {
     assert!(result.is_ok(), "Failed to build ChangeTrust transaction");
     let xdr = result.unwrap();
     assert!(!xdr.is_empty(), "XDR should not be empty");
-    
+
     // XDR should be valid base64
     assert!(
         base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &xdr).is_ok(),
@@ -56,7 +56,10 @@ fn test_build_change_trust_with_limit() -> Result<()> {
         network,
     );
 
-    assert!(result.is_ok(), "Failed to build ChangeTrust transaction with limit");
+    assert!(
+        result.is_ok(),
+        "Failed to build ChangeTrust transaction with limit"
+    );
     Ok(())
 }
 
@@ -82,7 +85,7 @@ fn test_build_payment_transaction_native() -> Result<()> {
     assert!(result.is_ok(), "Failed to build native payment transaction");
     let xdr = result.unwrap();
     assert!(!xdr.is_empty(), "XDR should not be empty");
-    
+
     // XDR should be valid base64
     assert!(
         base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &xdr).is_ok(),
@@ -113,7 +116,10 @@ fn test_build_payment_transaction_custom_asset() -> Result<()> {
         network,
     );
 
-    assert!(result.is_ok(), "Failed to build custom asset payment transaction");
+    assert!(
+        result.is_ok(),
+        "Failed to build custom asset payment transaction"
+    );
     Ok(())
 }
 
@@ -177,7 +183,10 @@ fn test_build_path_payment_with_assets() -> Result<()> {
         network,
     );
 
-    assert!(result.is_ok(), "Failed to build path payment with custom assets");
+    assert!(
+        result.is_ok(),
+        "Failed to build path payment with custom assets"
+    );
     Ok(())
 }
 
@@ -191,10 +200,10 @@ fn test_amount_parsing_precision() -> Result<()> {
 
     // Test various precisions
     let amounts = vec![
-        "100",        // whole number
-        "100.1",      // 1 decimal
-        "100.12",     // 2 decimals
-        "100.123",    // 3 decimals
+        "100",         // whole number
+        "100.1",       // 1 decimal
+        "100.12",      // 2 decimals
+        "100.123",     // 3 decimals
         "100.1234567", // 7 decimals (max precision)
     ];
 
@@ -208,11 +217,7 @@ fn test_amount_parsing_precision() -> Result<()> {
             sequence,
             network,
         );
-        assert!(
-            result.is_ok(),
-            "Failed to parse amount: {}",
-            amount
-        );
+        assert!(result.is_ok(), "Failed to parse amount: {}", amount);
     }
 
     Ok(())
@@ -237,7 +242,10 @@ fn test_amount_too_precise_rejected() {
         network,
     );
 
-    assert!(result.is_err(), "Should reject amount with > 7 decimal places");
+    assert!(
+        result.is_err(),
+        "Should reject amount with > 7 decimal places"
+    );
 }
 
 /// Test that native asset cannot be used for trustline
@@ -362,7 +370,7 @@ fn test_asset_params_together() {
 
     // Only code, no issuer - should fail in command validation
     // This test validates the transaction builder accepts None for both or both present
-    
+
     // Both None - should succeed (native)
     let result = horizon::build_payment_transaction(
         source_account,
