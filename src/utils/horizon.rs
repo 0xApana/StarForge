@@ -878,7 +878,7 @@ fn parse_amount(amount: &str) -> Result<i64> {
     Ok(whole
         .checked_mul(10_000_000)
         .and_then(|w| w.checked_add(fractional))
-        .ok_or_else(|| anyhow::anyhow!("Amount overflow"))?)
+        .ok_or_else(|| anyhow::anyhow!("Amount overflow")))
 }
 
 /// Helper: Build a generic transaction with operations
